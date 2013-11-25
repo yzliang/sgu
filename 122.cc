@@ -1,9 +1,8 @@
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <vector>
 using namespace std;
 
 int n;
@@ -11,10 +10,28 @@ bool can[1000][1000];
 int cycle[1000];
 char line[2500];
 
-int check_cycle() {
-  for (int i = 0; i < n; i++)
-    if (!can[cycle[i]][cycle[i + 1]]) return i;
-  return -1;
+void expand() {
+  vector<bool> go(n, false);
+  cycle[0] = 0;
+  for (int i = 1; i < n; i++) {
+    cycle[i] = 0;
+    for (int j = 1; j < n; j++) {
+      if (can[cycle[i - 1]][j] && !go[j]) {
+        go[j] = true;
+        cycle[i] = j;
+        break;
+      }
+    }
+    if (cycle[i] == 0) {
+      for (int j = 1; j < n; j++) {
+        if (!go[j]) {
+          go[j] = true;
+          cycle[i] = j;
+          break;
+        }
+      }
+    }
+  }
 }
 
 void swap(int& i, int &j) {
@@ -23,38 +40,53 @@ void swap(int& i, int &j) {
   j = temp;
 }
 
+void reverse(int l, int r) {
+  while (l != r) {
+    swap(cycle[l], cycle[r]);
+    l = (l + 1) % n;
+    if (l == r) break;
+    r = (r + n - 1) % n;
+  }
+}
+
 int main() {
   // Input.
-  scanf("%d\n", &n);
+  cin >> n;
+  string line;
+  getline(cin, line);
   for (int i = 0; i < n; i++) {
-    fgets(line, sizeof(line), stdin);
-    int len = strlen(line);
-    int j = 0;
-    while (j < len) {
-      int k = j + 1;
-      while (isdigit(line[k])) k++;
-      line[k] = '\0';
-      int ami = atoi(&line[j]);
-      can[i][ami - 1] = can[ami - 1][i] = true;
-      j = k + 1;
-    }
+    getline(cin, line);
+    istringstream iss(line);
+    int ami;
+    while (iss >> ami) can[i][ami - 1] = can[ami - 1][i] = true;
   }
   // Palmer's algorithm.
-  for (int i = 0; i < n; i++)
-    cycle[i] = i;
-  while (true) {
-    int i = check_cycle();
-    if (i == -1) break;
-    int j;
-    for (j = 0; j < n; j++) {
-      if (can[cycle[i]][cycle[j]] && can[cycle[i + 1]][cycle[j + 1]])
-        break;
+  expand();
+  bool gap;
+  do {
+    gap = false;
+    for (int i = 0; i < n; i++) {
+      int next_i = (i + 1) % n;
+      if (can[cycle[i]][cycle[next_i]]) continue;
+      gap = true;
+      for (int j = 0; j < n; j++) {
+        int next_j = (j + 1) % n;
+        if (j == i || next_j == i || j == next_i || next_j == next_i) continue;
+        if (can[cycle[i]][cycle[j]] && can[cycle[next_i]][cycle[next_j]]) {
+          reverse(next_i, j);
+          break;
+        }
+      }
     }
-    int l = i + 1, r = j;
-    while (l < r) swap(cycle[l++], cycle[r--]);
-  }
+  } while (gap);
   // Output.
-  for (int i = 0; i < n; i++) cout << cycle[i] + 1 << ' ';
-  cout << cycle[0] + 1 << endl;
+  int pos = 0;
+  while (cycle[pos] != 0) pos++;
+  cout << cycle[pos] + 1;
+  for (int i = 0; i < n; i++) {
+    pos = (pos + 1) % n;
+    cout << ' ' << cycle[pos] + 1;
+  }
+  cout << endl;
   return 0;
 }
