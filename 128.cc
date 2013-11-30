@@ -18,7 +18,7 @@ struct Event {
 int n;
 Point points[10000];
 vector<Event> events;
-int counts[50000];
+int counts[70000];
 
 bool compare_points_by_x(int id1, int id2) {
   if (points[id1].x != points[id2].x)
@@ -37,9 +37,8 @@ bool compare_points_by_y(int id1, int id2) {
 // Find neighbors for each point.
 // Return true iff. all points are used.
 bool find_companions() {
-  vector<int> ids;
-  for (int i = 0; i < n; i++)
-    ids.push_back(i);
+  vector<int> ids(n);
+  for (int i = 0; i < n; i++) ids[i] = i;
   sort(ids.begin(), ids.end(), compare_points_by_x);
   int i = 0;
   while (i < n) {
@@ -126,11 +125,11 @@ int segment_sum() {
   return ans;
 }
 
-void tree_add(int id, int l, int r, int val) {
+void tree_add(int id, int l, int r, int key, int val) {
   while (l < r) {
-    counts[id]++;
-    int m = (l + r) / 2;
-    if (val <= m) {
+    counts[id] += val;
+    int m = l + (r - l) / 2;
+    if (key <= m) {
       id = id * 2 + 1;
       r = m;
     } else {
@@ -138,29 +137,14 @@ void tree_add(int id, int l, int r, int val) {
       l = m + 1;
     }
   }
-  counts[id]++;
-}
-
-void tree_remove(int id, int l, int r, int val) {
-  while (l < r) {
-    counts[id]--;
-    int m = (l + r) / 2;
-    if (val <= m) {
-      id = id * 2 + 1;
-      r = m;
-    } else {
-      id = id * 2 + 2;
-      l = m + 1;
-    }
-  }
-  counts[id]--;
+  counts[id] += val;
 }
 
 // If there exists a value in interval [p, q].
 bool tree_contains(int id, int l, int r, int p, int q) {
   if (p <= l && q >= r) return counts[id] > 0;
   if (counts[id] == 0) return false;
-  int m = (l + r) / 2;
+  int m = l + (r - l) / 2;
   if (p <= m && q >= l && tree_contains(id * 2 + 1, l, m, p, q))
     return true;
   if (p <= r && q > m && tree_contains(id * 2 + 2, m + 1, r, p, q))
@@ -168,17 +152,20 @@ bool tree_contains(int id, int l, int r, int p, int q) {
   return false;
 }
 
+const int MIN_Y = -10000;
+const int MAX_Y = 10000;
+
 bool check_intersection() {
   for (int i = 0; i < events.size(); i++) {
     if (events[i].type == 1) {
-      tree_remove(0, -10000, 10000, points[events[i].id].y);
+      tree_add(0, MIN_Y, MAX_Y, points[events[i].id].y, -1);
     } else if (events[i].type == 2) {
       int y_min = points[events[i].id].y;
       int y_max = points[points[events[i].id].v_id].y;
       if (y_min + 1 > y_max - 1) continue;
-      if (tree_contains(0, -10000, 10000, y_min + 1, y_max - 1)) return false;
+      if (tree_contains(0, MIN_Y, MAX_Y, y_min + 1, y_max - 1)) return false;
     } else {
-      tree_add(0, -10000, 10000, points[events[i].id].y);
+      tree_add(0, MIN_Y, MAX_Y, points[events[i].id].y, 1);
     }
   }
   return true;
